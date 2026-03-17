@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Auction | Auction System</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+  <nav class="navbar">
+    <h2>🔨 Auction System</h2>
+    <div>
+      <a href="auctions.html">← Back</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="form-container">
+    <h2>➕ Create Auction</h2>
+    <input type="text"          id="title"       placeholder="Item Title"/>
+    <textarea                   id="description" placeholder="Item Description"></textarea>
+    <input type="number"        id="startPrice"  placeholder="Starting Price ($)"/>
+    <label>Auction End Date & Time:</label>
+    <input type="datetime-local" id="endTime"/>
+    <button onclick="createAuction()">Create Auction 🚀</button>
+    <p id="msg" class="msg"></p>
+  </div>
+
+  <script src="../js/main.js"></script>
+  <script>
+    // Redirect if not logged in
+    if (!localStorage.getItem('token')) {
+      window.location.href = 'login.html';
+    }
+
+    async function createAuction() {
+      const token       = localStorage.getItem('token');
+      const title       = document.getElementById('title').value;
+      const description = document.getElementById('description').value;
+      const startPrice  = document.getElementById('startPrice').value;
+      const endTime     = document.getElementById('endTime').value;
+      const msg         = document.getElementById('msg');
+
+      if (!title || !startPrice || !endTime) {
+        msg.textContent = '❌ Please fill all required fields';
+        msg.className = 'msg msg-error';
+        return;
+      }
+
+      try {
+        const res = await fetch('http://localhost:5000/api/auctions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ title, description, startPrice, endTime })
+        });
+
+        const data = await res.json();
+        msg.textContent = data.message;
+
+        if (res.ok) {
+          msg.className = 'msg msg-success';
+          setTimeout(() => window.location.href = 'auctions.html', 1500);
+        } else {
+          msg.className = 'msg msg-error';
+        }
+      } catch (err) {
+        msg.textContent = '❌ Server error. Make sure backend is running.';
+        msg.className = 'msg msg-error';
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = '../index.html';
+    }
+  </script>
+</body>
+</html>

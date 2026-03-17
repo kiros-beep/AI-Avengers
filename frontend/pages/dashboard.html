@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard | Auction System</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+  <nav class="navbar">
+    <h2>🔨 Auction System</h2>
+    <div>
+      <a href="auctions.html">Auctions</a>
+      <a href="create-auction.html">+ Create</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>📊 My Dashboard</h2>
+    <p id="welcomeMsg"></p>
+
+    <div class="features" style="margin-top:20px;">
+      <div class="feature-card">
+        <h3>🔨 My Auctions</h3>
+        <div id="myAuctions"><p>Loading...</p></div>
+      </div>
+      <div class="feature-card">
+        <h3>💰 My Bids</h3>
+        <div id="myBids"><p>Loading...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/main.js"></script>
+  <script>
+    if (!localStorage.getItem('token')) {
+      window.location.href = 'login.html';
+    }
+
+    const user = getUser();
+    if (user) {
+      document.getElementById('welcomeMsg').textContent = `Welcome back, ${user.name}! 👋`;
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch('http://localhost:5000/api/auctions');
+        const auctions = await res.json();
+        const myAuctions = auctions.filter(a => a.sellerId?._id === user?._id);
+
+        const myAuctionsDiv = document.getElementById('myAuctions');
+        if (myAuctions.length === 0) {
+          myAuctionsDiv.innerHTML = '<p>No auctions yet. <a href="create-auction.html">Create one!</a></p>';
+        } else {
+          myAuctionsDiv.innerHTML = myAuctions.map(a => `
+            <div style="padding:10px; border-bottom:1px solid #eee;">
+              <strong>${a.title}</strong><br/>
+              💰 $${a.currentPrice} | 
+              <span class="badge ${a.status === 'active' ? 'badge-active' : 'badge-closed'}">${a.status}</span>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        document.getElementById('myAuctions').innerHTML = '<p>Could not load.</p>';
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = '../index.html';
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

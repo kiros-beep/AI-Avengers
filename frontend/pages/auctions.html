@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Auctions | Auction System</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+
+  <nav class="navbar">
+    <h2>🔨 Auction System</h2>
+    <div>
+      <a href="auctions.html">Auctions</a>
+      <a href="create-auction.html">+ Create</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h2>🔥 Live Auctions</h2>
+      <a href="create-auction.html" class="btn">+ Create Auction</a>
+    </div>
+    <div id="auctionList" class="auction-grid">
+      <p>Loading auctions...</p>
+    </div>
+  </div>
+
+  <script src="../js/main.js"></script>
+  <script>
+    async function loadAuctions() {
+      try {
+        const res = await fetch('http://localhost:5000/api/auctions');
+        const auctions = await res.json();
+        const list = document.getElementById('auctionList');
+
+        if (auctions.length === 0) {
+          list.innerHTML = '<p>No auctions yet. <a href="create-auction.html">Create one!</a></p>';
+          return;
+        }
+
+        list.innerHTML = '';
+        auctions.forEach(a => {
+          const isActive = a.status === 'active';
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <h3>${a.title}</h3>
+            <p>${a.description || 'No description'}</p>
+            <p>💰 Current Price: <strong>$${a.currentPrice}</strong></p>
+            <p>🏁 Start Price: $${a.startPrice}</p>
+            <p>⏰ Ends: ${formatDate(a.endTime)}</p>
+            <p>👤 Seller: ${a.sellerId?.name || 'Unknown'}</p>
+            <p>Status: <span class="badge ${isActive ? 'badge-active' : 'badge-closed'}">${a.status}</span></p>
+            <a href="auction-detail.html?id=${a._id}" class="btn">View & Bid</a>
+          `;
+          list.appendChild(card);
+        });
+      } catch (err) {
+        document.getElementById('auctionList').innerHTML = '<p>❌ Could not load auctions. Is the server running?</p>';
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = '../index.html';
+    }
+
+    loadAuctions();
+  </script>
+</body>
+</html>

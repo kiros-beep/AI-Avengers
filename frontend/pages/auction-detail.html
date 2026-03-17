@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bid | Auction System</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+  <nav class="navbar">
+    <h2>🔨 Auction System</h2>
+    <div>
+      <a href="auctions.html">← Back to Auctions</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div id="auctionInfo" class="auction-detail">
+      <p>Loading auction...</p>
+    </div>
+
+    <div class="bid-box">
+      <h3>🔨 Place Your Bid</h3>
+      <input type="number" id="bidAmount" placeholder="Enter bid amount ($)"/>
+      <button onclick="placeBid()">Place Bid 🔨</button>
+      <p id="msg" class="msg"></p>
+    </div>
+
+    <div class="auction-detail">
+      <h3>📋 Bid History</h3>
+      <div id="bidList"><p>Loading bids...</p></div>
+    </div>
+  </div>
+
+  <script src="../js/main.js"></script>
+  <script>
+    const socket = io('http://localhost:5000');
+    const id = new URLSearchParams(window.location.search).get('id');
+
+    async function loadAuction() {
+      try {
+        const res = await fetch(`http://localhost:5000/api/auctions/${id}`);
+        const a = await res.json();
+
+        document.getElementById('auctionInfo').innerHTML = `
+          <h2>${a.title}</h2>
+          <p>${a.description || 'No description'}</p>
+          <div class="price-tag">💰 $<span id="currentPrice">${a.currentPrice}</span></div>
+          <p>🏁 Starting Price: $${a.startPrice}</p>
+          <p>⏰ Ends: ${formatDate(a.endTime)}</p>
+          <p>👤 Seller: ${a.sellerId?.name || 'Unknown'}</p>
+          <p>Status: <span class="badge ${a.status === 'active' ? 'badge-active' : 'badge-closed'}">${a.status}</span></p>
+          <p class="timer" id="countdown"></p>
+        `;
+
+        startTimer(a.endTime, 'countdown');
+        loadBids();
+      } catch (err) {
+        document.getElementById('auctionInfo').innerHTML = '<p>❌ Could not load auction.</p>';
+      }
+    }
+
+    async function loadBids() {
+      try {
+        const res = await fetch(`http://localhost:5000/api/bids/${id}`);
+        const bids = await res.json();
+        const list = document.getElementById('bidList');
+
+        if (bids.length === 0) {
+          list.innerHTML = '<p>No bids yet. Be the first!</p>';
+          return;
+        }
+
+        list.innerHTML = bids.map((b, i) => `
+          <div class="bid-item">
+            <span>${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} ${b.userId?.name || 'Unknown'}</span>
+            <span><strong>$${b.amount}</strong></span>
+          </div>
+        `).join('');
+      } catch (err) {
+        document.getElementById('bidList').innerHTML = '<p>Could not load bids.</p>';
+      }
+    }
+
+    async function placeBid() {
+      const token  = localStorage.getItem('token');
+      const amount = document.getElementById('bidAmount').value;
+      const msg    = document.getElementById('msg');
+
+      if (!token) {
+        msg.textContent = '❌ Please login first!';
+        msg.className = 'msg msg-error';
+        setTimeout(() => window.location.href = 'login.html', 1500);
+        return;
+      }
+
+      if (!amount) {
+        msg.textContent = '❌ Please enter a bid amount';
+        msg.className = 'msg msg-error';
+        return;
+      }
+
+      try {
+        const res = await fetch('http://localhost:5000/api/bids', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ auctionId: id, amount: Number(amount) })
+        });
+
+        const data = await res.json();
+        msg.textContent = data.message;
+
+        if (res.ok) {
+          msg.className = 'msg msg-success';
+          document.getElementById('bidAmount').value = '';
+          socket.emit('placeBid', { auctionId: id, amount: Number(amount) });
+          loadBids();
+        } else {
+          msg.className = 'msg msg-error';
+        }
+      } catch (err) {
+        msg.textContent = '❌ Server error.';
+        msg.className = 'msg msg-error';
+      }
+    }
+
+    socket.on('bidUpdate', (data) => {
+      if (data.auctionId === id) {
+        document.getElementById('currentPrice').textContent = data.amount;
+        loadBids();
+      }
+    });
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = '../index.html';
+    }
+
+    loadAuction();
+  </script>
+</body>
+</html>
